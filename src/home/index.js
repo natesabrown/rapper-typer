@@ -22,7 +22,7 @@ function Home() {
   const [signedIn, setSignedIn] = useState(false);
   const [messageShown, setMessageShown] = useState(false);
 
-  const [joinShown, setJoinShown] = useState(true);
+  const [joinShown, setJoinShown] = useState(false);
   const [createShown, setCreateShown] = useState(false);
 
   useEffect(() => {
