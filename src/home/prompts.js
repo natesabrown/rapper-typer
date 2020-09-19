@@ -4,9 +4,11 @@ import bearhead from "./bearhead.svg";
 import rabbithead from "./rabbithead.svg";
 import "./styles.css";
 import { LoaderDots } from "@thumbtack/thumbprint-react";
-import { BsBoxArrowRight } from 'react-icons/bs';
-import { useFirestore, useFirebase } from 'react-redux-firebase';
+import { BsBoxArrowRight } from "react-icons/bs";
+import { useFirestore, useFirebase, useFirestoreConnect } from "react-redux-firebase";
 import GoogleButton from "react-google-button";
+import { useSelector } from 'react-redux';
+import { useHistory } from 'react-router-dom';
 
 const BEAR = 0;
 const RABBIT = 1;
@@ -18,16 +20,39 @@ function CreatePrompt(props) {
   const [hideInitial, setHideInitial] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const firestore = useFirestore();
+  const profile = useSelector((state) => state.firebase.profile);
+  const history = useHistory();
+
+  const watchForStatus = (code) => {
+    console.log(`Access code is ${code}`)
+    firestore.collection("sessions").doc(code).onSnapshot(doc => {
+      console.log("Snapshotted!")
+      let data = doc.data();
+      let status = data.status;
+      if (status == 'ONGOING') {
+        history.push(`/game/${code}`);
+      }
+    })
+  }
 
   const handleChoice = (choice) => {
     setChoiceSelected(true);
 
-    firestore.collection("sessions").add({
-      status: "WAITING"
-    }).then(docRef => {
-      let sessionID = docRef.id;
-      setAccessCode(sessionID);
-    })
+    const creatureChoice = choice == BEAR ? "bear" : "rabbit";
+
+    firestore
+      .collection("sessions")
+      .add(Object.assign({
+        status: "WAITING",
+      }, {player1: {
+        animal: creatureChoice,
+        uid: profile.uid
+      }}))
+      .then((docRef) => {
+        let sessionID = docRef.id;
+        setAccessCode(sessionID);
+        watchForStatus(docRef.id);
+      });
 
     setTimeout(() => {
       setHideInitial(true);
@@ -244,12 +269,35 @@ const FillContainer = styled.div`
 
 function JoinPrompt(props) {
   const { setShown } = props;
+  const firestore = useFirestore();
   const [code, setCode] = useState("");
   const [joinErr, setJoinErr] = useState(undefined);
+  const profile = useSelector((state) => state.firebase.profile);
+  const history = useHistory();
 
   const handleClick = () => {
+    firestore.collection('sessions').doc(code).get().then(snapshot => {
+      if (!snapshot.exists) {
+        setJoinErr("Game doesn't exist; please check that you have the correct code.")
+        return;
+      }
 
-  }
+      let data = snapshot.data();
+      let { player1 } = data;
+      let { player2 } = data;
+      let userIsPlayer = (profile.uid == player1.uid) || (player2 && (profile.uid == player2.uid));
+
+        if (userIsPlayer) {
+        history.push(`/game/${code}`);
+        return;
+      } else if (!userIsPlayer && data.status == 'WAITING') {
+        history.push(`/game/${code}`);
+        return;
+      } else {
+        setJoinErr("Game is being played by other people.")
+      }
+    });
+  };
 
   return (
     <FillContainer>
@@ -265,7 +313,10 @@ function JoinPrompt(props) {
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
-        <JoinButton onClick={handleClick}><BsBoxArrowRight/>Join</JoinButton>
+        <JoinButton onClick={handleClick}>
+          <BsBoxArrowRight />
+          Join
+        </JoinButton>
         {joinErr && <ErrMessage>{joinErr}</ErrMessage>}
         <XButton
           style={{ color: "green", borderColor: "green" }}
@@ -283,7 +334,8 @@ const ErrMessage = styled.div`
   font-size: 22px;
   font-weight: 500;
   margin-top: 50px;
-`
+  text-align: center;
+`;
 
 const JoinButton = styled.div`
   width: 150px;
@@ -311,7 +363,7 @@ const JoinButton = styled.div`
       animation: softbounce 0.5s ease-in-out infinite;
     }
   }
-`
+`;
 
 const CodeInput = styled.input`
   background-color: white;
@@ -337,19 +389,89 @@ function SignInPrompt() {
         provider: "google",
         type: "popup",
       })
-      .then(() => {
-
-      })
-  }
+      .then(() => {});
+  };
 
   return (
     <FillContainer>
-      <Prompt style={{justifyContent: "center"}}>
-        <Message style={{fontSize: "40px", fontWeight: "500", marginBottom: "60px"}}>Please Sign In to Play!</Message>
-        <GoogleButton type="light" onClick={signInWithFirebase} style={{transform: "scale(1.3)", marginBottom: "80px"}}/>
+      <Prompt
+        style={{
+          justifyContent: "center",
+          background:
+            "linear-gradient(23deg, rgba(205,0,255,1) 0%, rgba(255,0,0,1) 47%, rgba(249,155,53,1) 100%)",
+        }}
+      >
+        <Message
+          style={{ fontSize: "40px", fontWeight: "500", marginBottom: "60px" }}
+        >
+          Please Sign In to Play!
+        </Message>
+        <GoogleButton
+          type="light"
+          onClick={signInWithFirebase}
+          style={{ transform: "scale(1.3)", marginBottom: "80px" }}
+        />
       </Prompt>
     </FillContainer>
-  )
+  );
 }
 
-export { CreatePrompt, JoinPrompt, SignInPrompt };
+function HelpPrompt(props) {
+  const { setShown } = props;
+  return (
+    <FillContainer>
+      Hello world.
+      <HelpDiv>
+        <Explanation>
+        <h1>How to play</h1>
+        <p>
+          When it's your turn, simply type in what you see in the prompt.
+        </p>
+        </Explanation>
+        <Credits>
+          Made by Nathaniel Brown at <b>HackMIT</b> 2020
+        </Credits>
+        <XButton
+          style={{ color: "darkred", borderColor: "darkred" }}
+          onClick={() => setShown(false)}
+        >
+          ✕
+        </XButton>
+      </HelpDiv>
+    </FillContainer>
+  );
+}
+
+const Credits = styled.div`
+  position: absolute; 
+  bottom: 30px;
+  text-align: center;
+`
+
+const Explanation = styled.div`
+  margin-top: 30px;
+  text-align: center;
+`
+
+const HelpDiv = styled.div`
+  background: rgb(255, 0, 174);
+  background: linear-gradient(
+    23deg,
+    rgba(255, 0, 174, 1) 2%,
+    rgba(255, 0, 0, 1) 40%,
+    rgba(249, 94, 53, 1) 100%
+  );
+  box-shadow: 0px 10px 15px 1px rgba(0, 0, 0, 0.4);
+  width: 70%;
+  height: 80%;
+  opacity: 0.8;
+  border-radius: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  color: white;
+  padding: 30px;
+`;
+
+export { CreatePrompt, JoinPrompt, SignInPrompt, HelpPrompt };

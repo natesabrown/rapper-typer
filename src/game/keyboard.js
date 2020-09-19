@@ -148,6 +148,10 @@ const KeyBoardDiv = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: fixed;
+  bottom: 140px;
+  left: calc(50% - 440px);
+  margin: 0 auto;
 `
 
 export default KeyBoard;

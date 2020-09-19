@@ -24,8 +24,14 @@ const rrfConfig = {
   useFirestoreForProfile: true,
   profileFactory: (userData, profileData, firebase) => {
     const { user } = userData;
+    console.log(JSON.stringify(userData))
+    console.log(JSON.stringify(profileData))
     return {
-      averageWPM: 0,
+      uid: userData.uid,
+      displayName: userData.displayName,
+      email: userData.email,
+      photoURL: userData.photoURL,
+      averageWPM: 60,
     };
   },
 };
