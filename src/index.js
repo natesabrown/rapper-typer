@@ -9,13 +9,18 @@ import {
   ReactReduxFirebaseProvider,
   firebaseReducer,
 } from "react-redux-firebase";
+import { createFirestoreInstance, firestoreReducer } from 'redux-firestore';
 
 import "firebase/auth";
+import "firebase/storage";
+import "firebase/firestore";
+
 import firebase from "firebase/app";
 import fbConfig from './fb-config';
 
 const rrfConfig = {
   userProfile: "users",
+  useFirestoreForProfile: true,
   profileFactory: (userData, profileData, firebase) => {
     const { user } = userData;
     return {
@@ -26,8 +31,15 @@ const rrfConfig = {
 
 firebase.initializeApp(fbConfig);
 
+firebase.firestore();
+
+firebase.firestore().settings({
+  ignoreUndefinedProperties: true,
+});
+
 const rootReducer = combineReducers({
   firebase: firebaseReducer,
+  firestore: firestoreReducer
 });
 
 const initialState = {};
@@ -37,6 +49,7 @@ const rrfProps = {
   firebase,
   config: rrfConfig,
   dispatch: store.dispatch,
+  createFirestoreInstance
 };
 
 ReactDOM.render(
