@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App";
 import * as serviceWorker from "./serviceWorker";
@@ -9,14 +10,14 @@ import {
   ReactReduxFirebaseProvider,
   firebaseReducer,
 } from "react-redux-firebase";
-import { createFirestoreInstance, firestoreReducer } from 'redux-firestore';
+import { createFirestoreInstance, firestoreReducer } from "redux-firestore";
 
 import "firebase/auth";
 import "firebase/storage";
 import "firebase/firestore";
 
 import firebase from "firebase/app";
-import fbConfig from './fb-config';
+import fbConfig from "./fb-config";
 
 const rrfConfig = {
   userProfile: "users",
@@ -39,7 +40,7 @@ firebase.firestore().settings({
 
 const rootReducer = combineReducers({
   firebase: firebaseReducer,
-  firestore: firestoreReducer
+  firestore: firestoreReducer,
 });
 
 const initialState = {};
@@ -49,16 +50,18 @@ const rrfProps = {
   firebase,
   config: rrfConfig,
   dispatch: store.dispatch,
-  createFirestoreInstance
+  createFirestoreInstance,
 };
 
 ReactDOM.render(
   <React.StrictMode>
-    <Provider store={store}>
-      <ReactReduxFirebaseProvider {...rrfProps}>
-        <App />
-      </ReactReduxFirebaseProvider>
-    </Provider>
+    <BrowserRouter>
+      <Provider store={store}>
+        <ReactReduxFirebaseProvider {...rrfProps}>
+          <App />
+        </ReactReduxFirebaseProvider>
+      </Provider>
+    </BrowserRouter>
   </React.StrictMode>,
   document.getElementById("root")
 );
