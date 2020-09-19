@@ -1,0 +1,7 @@
+.fadeout {
+  animation: fadeout 0.5s linear forwards;
+}
+
+.fadein {
+  animation: fadein 0.5s linear;
+}

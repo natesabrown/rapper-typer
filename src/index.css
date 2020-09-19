@@ -33,3 +33,23 @@ code {
     transform: translateY(0px);
   }
 }
+
+@keyframes fadeout {
+  from {
+    opacity: 100%;
+  }
+  to {
+    opacity: 0%;
+    transform: translateX(-50px);
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0%;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 100%;
+  }
+}

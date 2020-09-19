@@ -14,11 +14,16 @@ import { GiExitDoor } from 'react-icons/gi';
 import { FaPlus } from 'react-icons/fa';
 import { FaGithub } from 'react-icons/fa';
 
+import { JoinPrompt, CreatePrompt } from './prompts';
+
 function Home() {
   const firebase = useFirebase();
   const profile = useSelector((state) => state.firebase.profile);
   const [signedIn, setSignedIn] = useState(false);
   const [messageShown, setMessageShown] = useState(false);
+
+  const [joinShown, setJoinShown] = useState(true);
+  const [createShown, setCreateShown] = useState(false);
 
   useEffect(() => {
     if (!isEmpty(profile)) {
@@ -63,8 +68,12 @@ function Home() {
       <MainContent>
         <Logo src={logo}></Logo>
         <Buttons>
-          <Button signedIn={signedIn} color={"green"}><GiExitDoor/>Join</Button>
-          <Button signedIn={signedIn} color={"red"}><FaPlus/>Create</Button>
+          <Button signedIn={signedIn} color={"green"} onClick={() => {
+            signedIn && setJoinShown(true);
+          }}><GiExitDoor/>Join</Button>
+          <Button signedIn={signedIn} color={"red"} onClick={() => {
+            signedIn && setCreateShown(true);
+          }}><FaPlus/>Create</Button>
           {messageShown && !signedIn && <div style={{
             color: "white",
             fontSize: "20px",
@@ -96,6 +105,8 @@ function Home() {
         left: "10px",
         zIndex: "2"
       }}>Log Out</LogOutButton>}
+      {joinShown && <JoinPrompt setShown={setJoinShown}/>}
+      {createShown && <CreatePrompt setShown={setCreateShown}/>}
     </Container>
   );
 }
@@ -198,6 +209,7 @@ const TPRightDots = styled.img`
 
 const Container = styled.div`
   position: relative;
+  background: orange;
   background: linear-gradient(
     45deg,
     rgba(131, 58, 180, 1) 0%,
