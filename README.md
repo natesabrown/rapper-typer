@@ -1,4 +1,7 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Rapper Typer
+**View deployed project** at <https://hungry-albattani-7f8050.netlify.app/>
+
+Perhaps not surprisingly, this project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
 
