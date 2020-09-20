@@ -8,6 +8,8 @@ import {
   isLoaded,
   useFirestore,
   useFirebase,
+  useFirebaseConnect,
+  useFirestoreConnect
 } from "react-redux-firebase";
 import { SignInPrompt, HelpPrompt } from "../home/prompts";
 import logo from "../home/logo.svg";
@@ -15,12 +17,17 @@ import { FaRegQuestionCircle } from "react-icons/fa";
 import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
 import curtain from "./curtain_medium.jpg";
-import lefthand from './lefthand.svg';
-import righthand from './righthand.svg';
-import { IoIosHand } from 'react-icons/io';
-import hihat from './hihat.svg';
-import { MdNotInterested } from 'react-icons/md';
-import yourgoal from './yourgoal.svg';
+import lefthand from "./lefthand.svg";
+import righthand from "./righthand.svg";
+import { IoIosHand } from "react-icons/io";
+import hihat from "./hihat.svg";
+import { MdNotInterested } from "react-icons/md";
+import yourgoal from "./yourgoal.svg";
+import leftbubble from "./leftbubble.svg";
+import rightbubble from "./rightbubble.svg";
+import bearhead from "../home/bearhead.svg";
+import rabbithead from "../home/rabbithead.svg";
+import TextInput, { ShowOtherInput } from './text-input';
 
 function Game(props) {
   const gameID = props.match.params.gameID;
@@ -32,6 +39,32 @@ function Game(props) {
   const [showSignIn, setShowSignIn] = useState(false);
   const [musicOff, setMusicOff] = useState(false);
   const [handsOff, setHandsOff] = useState(false);
+  const [myTurn, setMyTurn] = useState(true);
+  const [isBear, setIsBear] = useState(false);
+  const [otherName, setOtherName] = useState("");
+  let [isPlayer1, setIsPlayer1] = useState(false);
+
+  useFirebaseConnect(gameID);
+  useFirestoreConnect(`sessions/${gameID}`);
+  const currentLine = useSelector(state => state.firebase.data[gameID] && state.firebase.data[gameID].currentLine);
+  const currentTurn = useSelector(state => state.firebase.data[gameID] && state.firebase.data[gameID].currentTurn);
+  const status = useSelector(
+    (state) => state.firestore.data.sessions && state.firestore.data.sessions[gameID].status
+  );
+
+  useEffect(() => {
+    console.log(rapObj.turns && Object.keys(rapObj.turns).length);
+  })
+
+  const getName = () => {
+    if (!isEmpty(profile)) {
+      return convertName(profile.displayName);
+    }
+  };
+
+  const convertName = (name) => {
+    return name.split(" ")[0];
+  };
 
   useEffect(() => {
     if (isEmpty(profile)) {
@@ -42,44 +75,113 @@ function Game(props) {
     }
   }, [profile]);
 
+  useEffect(() => {
+    console.log(rapObj)
+  })
+
+  const getOtherPlayersName = (player1, player2) => {
+    if (profile.uid == player1.uid) {
+      console.log("set name 1");
+      return player2.name;
+    } else if (profile.uid == (player2 ? player2.uid : profile.uid)) {
+      console.log("set name 2");
+      return player1.name;
+    }
+  };
+
+  useEffect(() => {
+    if (isPlayer1) {
+      setMyTurn(currentTurn % 2 == 0);
+    } else {
+      setMyTurn(currentTurn % 2 == 1);
+    }
+  }, [currentTurn])
+
   // Ensures user is accessing a valid session, then gets the rap text for that session
-  const initiateGame = () => {
-    firestore.collection('sessions').doc(gameID).get().then(snapshot => {
-      let data = snapshot.data();
-      let { player1 } = data;
-      let { player2 } = data;
-      let userIsPlayer = (profile.uid == player1.uid) || (player2 && (profile.uid == player2.uid));
+  const initiateGame = async () => {
+    firestore
+      .collection("sessions")
+      .doc(gameID)
+      .get()
+      .then((snapshot) => {
+        let data = snapshot.data();
+        let { player1 } = data;
+        let { player2 } = data;
+        let userIsPlayer =
+          profile.uid == player1.uid || (player2 && profile.uid == player2.uid);
 
-      if (!snapshot.exists) {
-        history.push("/");
-        return;
-      } else if ((snapshot.data().status != "WAITING") && !userIsPlayer) {
-        history.push("/");
-        return;
-      } 
-
-      let player2choice = "";
-      if (!userIsPlayer) {
-        if (data.player1.animal == "bear") {
-          player2choice = "rabbit";
-        } else {
-          player2choice = "bear";
+        if (!snapshot.exists) {
+          history.push("/");
+          return;
+        } else if (snapshot.data().status != "WAITING" && !userIsPlayer) {
+          history.push("/");
+          return;
         }
-        firestore.collection('sessions').doc(gameID).update({
-          player2: {
-            animal: player2choice,
-            uid: profile.uid
-          },
-          status: "ONGOING"
-        })
-      } 
 
-      firestore.collection('songs').doc('example').get().then(doc => {
-        let data = doc.data();
-        setRapObj(data);
-      })
-    })
-  }
+        let player2choice = "";
+        if (!userIsPlayer) {
+          if (data.player1.animal == "bear") {
+            player2choice = "rabbit";
+          } else {
+            player2choice = "bear";
+          }
+          firestore
+            .collection("sessions")
+            .doc(gameID)
+            .update({
+              player2: {
+                animal: player2choice,
+                uid: profile.uid,
+                name: profile.displayName,
+              },
+              status: "ONGOING",
+            })
+            .then(() => {
+              // find out which animal the user is
+              console.log("User is player 2");
+              setMyTurn(false);
+              if (player2choice == "bear") {
+                setIsBear(true);
+              } else {
+                setIsBear(false);
+              }
+
+              setOtherName(convertName(getOtherPlayersName(player1, player2)));
+            });
+        } else {
+          // find out which animal the user is
+          if (data.player1.uid == profile.uid) {
+            setIsPlayer1(true);
+            console.log("User is player 1");
+            if (data.player1.animal == "bear") {
+              setIsBear(true);
+            } else {
+              setIsBear(false);
+            }
+          } else if (data.player2.uid == profile.uid) {
+            console.log("User is player 2");
+            setMyTurn(false);
+            if (data.player2.animal == "bear") {
+              setIsBear(true);
+            } else {
+              setIsBear(false);
+            }
+          }
+
+          setOtherName(convertName(getOtherPlayersName(player1, player2)));
+        }
+
+        firestore
+          .collection("songs")
+          .doc("example")
+          .get()
+          .then((doc) => {
+            let data = doc.data();
+            setRapObj(data);
+            console.log(JSON.stringify(data.turns))
+          });
+      });
+  };
 
   return (
     <MainContainer>
@@ -87,21 +189,78 @@ function Game(props) {
         <Logo src={logo} />
         <Question />
       </TopBar>
-      <WPMGoal />
+      <WPMGoal>
+        <PlayerDiv>
+          {isBear ? (
+            <AnimalImage
+              src={bearhead}
+              style={{ transform: "translateX(8px)" }}
+            />
+          ) : (
+            <AnimalImage src={rabbithead} />
+          )}
+          <p>{getName()}</p>
+        </PlayerDiv>
+        <PlayerDiv right>
+          {!isBear ? (
+            <AnimalImage
+              src={bearhead}
+              style={{ transform: "translateX(8px)" }}
+            />
+          ) : (
+            <AnimalImage src={rabbithead} />
+          )}
+          <p>{otherName}</p>
+        </PlayerDiv>
+      </WPMGoal>
+      {/* TODO: Replace with something that check for all stuff then allows user to type */}
+      {rapObj.turns && <MessageDiv>
+        {myTurn ? <img src={leftbubble} /> : <img src={rightbubble} />}
+        {myTurn && <TextInput onNextRow={() => {
+          firebase.ref(gameID).update({currentLine: currentLine + 1});
+        }} onDone={() => {
+          if ((currentTurn + 1) != Object.keys(rapObj.turns).length) {
+            firebase.ref(gameID).update({currentLine: 0, currentTurn: currentTurn + 1});
+          } else {
+            console.log("Done")
+            firestore.collection("sessions").doc(gameID).update({
+              status: "FINISHED"
+            })
+          }
+        }}
+        turns={rapObj.turns}
+        currentTurn={currentTurn}
+        />}
+        {!myTurn && currentLine && <ShowOtherInput
+          turns={rapObj.turns}
+          currentTurn={currentTurn}
+          currentLine={currentLine}
+        />}
+      </MessageDiv>
+      } 
       {showSignIn && <SignInPrompt />}
       <Keyboard />
-      {!handsOff && 
-      <Hand src={lefthand}/>
-      }
-      {!handsOff && 
-      <Hand src={righthand} right/>
-      }
+      {!handsOff && <Hand src={lefthand} />}
+      {!handsOff && <Hand src={righthand} right />}
       <ButtonRow>
-        <OnOffButton onClick={() => setMusicOff(!musicOff)}><img src={hihat}/>
-          {musicOff && <NoImage><MdNotInterested /></NoImage>}
+        <OnOffButton onClick={() => setMusicOff(!musicOff)}>
+          <img src={hihat} />
+          {musicOff && (
+            <NoImage>
+              <MdNotInterested />
+            </NoImage>
+          )}
         </OnOffButton>
-        <OnOffButton onClick={() => setHandsOff(!handsOff)} style={{marginLeft: "10px"}}><IoIosHand />
-          {handsOff && <NoImage><MdNotInterested /></NoImage>}
+        <OnOffButton
+          onClick={() => setHandsOff(!handsOff)}
+          style={{ marginLeft: "10px" }}
+        >
+          <IoIosHand />
+          {handsOff && (
+            <NoImage>
+              <MdNotInterested />
+            </NoImage>
+          )}
         </OnOffButton>
       </ButtonRow>
       {/* <BackgroundDiv>
@@ -116,6 +275,36 @@ function Game(props) {
   );
 }
 
+const PlayerDiv = styled.div`
+  position: absolute;
+  ${(props) => (props.right ? "right: -300px" : "left: -300px")};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: black;
+  font-weight: 500;
+
+  p {
+    transform: translateY(-10px);
+  }
+`;
+
+const AnimalImage = styled.img`
+  height: 120px;
+  width: 120px;
+`;
+
+const MessageDiv = styled.div`
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  position: relative;
+
+  img {
+    width: 800px;
+  }
+`;
+
 const NoImage = styled.div`
   position: absolute;
   width: 100%;
@@ -126,7 +315,7 @@ const NoImage = styled.div`
   svg {
     fill: red;
   }
-`
+`;
 
 const ButtonRow = styled.div`
   position: fixed;
@@ -135,7 +324,7 @@ const ButtonRow = styled.div`
   padding: 12px;
   display: flex;
   flex-direction: row;
-`
+`;
 
 const OnOffButton = styled.div`
   background-color: darkgray;
@@ -147,36 +336,43 @@ const OnOffButton = styled.div`
   border-radius: 12px;
   position: relative;
 
-  svg, img {
+  svg,
+  img {
     height: 90px;
     width: 90px;
   }
 
   &:hover {
     cursor: pointer;
-    opacity: 1.0;
+    opacity: 1;
   }
-`
+`;
 
 const Hand = styled.img`
   height: 50vh;
   position: fixed;
   bottom: 0;
 
-  ${props => props.right ? `
+  ${(props) =>
+    props.right
+      ? `
     right: 4%;
-  ` : `left: 4%`}
+  `
+      : `left: 4%`}
 
   @media screen and (max-width: 1400px) {
-    ${props => props.right ? `
+    ${(props) =>
+      props.right
+        ? `
     right: 0;
-  ` : `left: 0`}
+  `
+        : `left: 0`}
   }
 
   @media screen and (max-width: 1000px) {
     display: none;
   }
-`
+`;
 
 const BackgroundDiv = styled.div`
   position: fixed;
@@ -211,10 +407,10 @@ function Question() {
 
   return (
     <div>
-    <QMark title="need help?">
-      <FaRegQuestionCircle onClick={() => setHelpShown(true)}/>
-    </QMark>
-    {helpShown && <HelpPrompt setShown={setHelpShown}/>}
+      <QMark title="need help?">
+        <FaRegQuestionCircle onClick={() => setHelpShown(true)} />
+      </QMark>
+      {helpShown && <HelpPrompt setShown={setHelpShown} />}
     </div>
   );
 }
@@ -243,11 +439,15 @@ const QMark = styled.div`
   }
 `;
 
-function WPMGoal() {
+function WPMGoal(props) {
   return (
     <WPMDiv>
       <Flesh>68</Flesh>
-      <WPMMessage>WPM<img src={yourgoal} /></WPMMessage>
+      <WPMMessage>
+        WPM
+        <img src={yourgoal} />
+      </WPMMessage>
+      {props.children}
     </WPMDiv>
   );
 }

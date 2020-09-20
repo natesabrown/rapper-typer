@@ -20,6 +20,7 @@ function CreatePrompt(props) {
   const [hideInitial, setHideInitial] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const firestore = useFirestore();
+  const firebase = useFirebase();
   const profile = useSelector((state) => state.firebase.profile);
   const history = useHistory();
 
@@ -44,14 +45,20 @@ function CreatePrompt(props) {
       .collection("sessions")
       .add(Object.assign({
         status: "WAITING",
+        turn: 1
       }, {player1: {
         animal: creatureChoice,
-        uid: profile.uid
+        uid: profile.uid,
+        name: profile.displayName
       }}))
       .then((docRef) => {
         let sessionID = docRef.id;
         setAccessCode(sessionID);
         watchForStatus(docRef.id);
+        firebase.ref(docRef.id).set({
+          currentLine: 0,
+          currentTurn: 0
+        })
       });
 
     setTimeout(() => {

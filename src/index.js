@@ -15,6 +15,7 @@ import { createFirestoreInstance, firestoreReducer } from "redux-firestore";
 import "firebase/auth";
 import "firebase/storage";
 import "firebase/firestore";
+import 'firebase/database';
 
 import firebase from "firebase/app";
 import fbConfig from "./fb-config";
