@@ -94,7 +94,7 @@ function CreatePrompt(props) {
         >
           <Message style={{ fontWeight: "600" }}>Your Access Code:</Message>
           <AccessCode>{accessCode}</AccessCode>
-          <CopyButton onClick={copyToClipboard}>Copy Link</CopyButton>
+          <CopyButton onClick={copyToClipboard}>Copy URL</CopyButton>
           <LoaderDots size="medium" theme="inverse" />
           <div
             style={{
