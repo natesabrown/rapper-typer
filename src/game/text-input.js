@@ -28,8 +28,11 @@ function TextInput(props) {
   const turn = props.turns[props.currentTurn];
   const onNextRow = props.onNextRow;
   const onDone = props.onDone;
+  const wpmArr = props.wpmArr;
+  const setwpmArr = props.setwpmArr;
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [startTime, setStart] = useState();
 
   useEffect(() => {
     const addStuff = (event) => {
@@ -37,6 +40,7 @@ function TextInput(props) {
       let letter = turn[index][progress];
       if (key == letter) {
         addProgress();
+        conditionalTimeStart();
       }
     };
 
@@ -51,7 +55,8 @@ function TextInput(props) {
     if (progress == turn[index].length - 1) {
       setProgress(0);
       if (index + 1 == turn.length) {
-        console.log("finish");
+        // user done with their turn 
+        addTimeToArr();
         onDone();
       } else {
         onNextRow();
@@ -59,6 +64,35 @@ function TextInput(props) {
       }
     }
   };
+
+  const addTimeToArr = () => {
+    let arr = [...wpmArr]
+    let seconds = (((new Date()) - startTime) / 1000)
+    let minutes = seconds / 60;
+    console.log(`Took ${minutes} minutes in total.`);
+    let numWords = calcNumberOfWords();
+    console.log(`This turn had ${numWords} words.`);
+    let wpm = numWords/minutes;
+    console.log(`Works out to ${wpm} wpm.`)
+    arr.push(wpm);
+    setwpmArr(arr);
+  }
+
+  const calcNumberOfWords = () => {
+    let num = 0;
+    for (let line of turn) {
+      for (let word of line.split(" ")) {
+        num += 1;
+      }
+    }
+    return num;
+  }
+
+  const conditionalTimeStart = () => {
+    if (!startTime) {
+      setStart(new Date())
+    }
+  }
 
   const getNextLine = () => {
     if (index + 1 == turn.length) {
@@ -73,9 +107,9 @@ function TextInput(props) {
       <Row>
         {turn[index].split("").map((letter, index) => {
           return letter == " " ? (
-            <Letter typed={index < progress}>&nbsp;</Letter>
+            <Letter typed={index < progress} active={progress == index}>&nbsp;</Letter>
           ) : (
-            <Letter typed={index < progress}> {letter}</Letter>
+            <Letter typed={index < progress} active={progress == index}> {letter}</Letter>
           );
         })}
       </Row>
@@ -112,6 +146,23 @@ mask-image: linear-gradient(to top, rgba(169, 169, 169, 0), rgba(169, 169, 169, 
 const Letter = styled.div`
   color: ${(props) => (props.typed ? "black" : "rgba(169, 169, 169)")};
   font-size: 28px;
+  ${props => props.active && `
+    animation: blink 1s infinite;
+  `}
+  @keyframes blink {
+    0% {
+      background-color: gray;
+    }
+    25% {
+      background-color: white;
+    }
+    50% {
+      background-color: white;
+    }
+    100% {
+      background-color: gray;
+    }
+  }
 `;
 
 const Row = styled.div`

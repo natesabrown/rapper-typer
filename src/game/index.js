@@ -28,6 +28,7 @@ import rightbubble from "./rightbubble.svg";
 import bearhead from "../home/bearhead.svg";
 import rabbithead from "../home/rabbithead.svg";
 import TextInput, { ShowOtherInput } from './text-input';
+import { FinishPrompt } from '../home/prompts';
 
 function Game(props) {
   const gameID = props.match.params.gameID;
@@ -42,6 +43,9 @@ function Game(props) {
   const [myTurn, setMyTurn] = useState(true);
   const [isBear, setIsBear] = useState(false);
   const [otherName, setOtherName] = useState("");
+  const [wpmArr, setwpmArr] = useState([]);
+  const [isDone, setIsDone] = useState(false);
+  const [didWin, setDidWin] = useState();
   let [isPlayer1, setIsPlayer1] = useState(false);
 
   useFirebaseConnect(gameID);
@@ -53,8 +57,41 @@ function Game(props) {
   );
 
   useEffect(() => {
-    console.log(rapObj.turns && Object.keys(rapObj.turns).length);
-  })
+    if (status == "FINISHED") {
+      let update_obj = {};
+      if (isPlayer1) {
+        update_obj = {
+          player1wpm: calcWPMAverage()
+        }
+      } else {
+        update_obj = {
+          player2wpm: calcWPMAverage()
+        }
+      }
+      firestore.collection("sessions").doc(gameID).update(update_obj).then(() => {
+        setTimeout(() => {
+          firestore.collection("sessions").doc(gameID).get().then(doc => {
+            const data = doc.data();
+            const { player1wpm, player2wpm } = data;
+            if (player1wpm > player2wpm) {
+              if (isPlayer1) {
+                setDidWin(true);
+              } else {
+                setDidWin(false);
+              }
+            } else {
+              if (isPlayer1) {
+                setDidWin(false);
+              } else {
+                setDidWin(true);
+              }
+            }
+            setIsDone(true);
+          })
+        }, 1000)
+      })
+    }
+  }, [status])
 
   const getName = () => {
     if (!isEmpty(profile)) {
@@ -75,10 +112,6 @@ function Game(props) {
     }
   }, [profile]);
 
-  useEffect(() => {
-    console.log(rapObj)
-  })
-
   const getOtherPlayersName = (player1, player2) => {
     if (profile.uid == player1.uid) {
       console.log("set name 1");
@@ -95,7 +128,18 @@ function Game(props) {
     } else {
       setMyTurn(currentTurn % 2 == 1);
     }
-  }, [currentTurn])
+  }, [currentTurn]);
+
+  const calcWPMAverage = () => {
+    let total = 0;
+    console.log(`I see wpm arr as ${wpmArr}`)
+    for (let value of wpmArr) {
+      total += value;
+    }
+    let avg = total / wpmArr.length;
+    console.log(`We have determined a ${avg} wpm average for all the parts.`)
+    return Math.round(avg);
+  }
 
   // Ensures user is accessing a valid session, then gets the rap text for that session
   const initiateGame = async () => {
@@ -173,7 +217,7 @@ function Game(props) {
 
         firestore
           .collection("songs")
-          .doc("example")
+          .doc("example") // todo: change
           .get()
           .then((doc) => {
             let data = doc.data();
@@ -230,6 +274,8 @@ function Game(props) {
         }}
         turns={rapObj.turns}
         currentTurn={currentTurn}
+        wpmArr={wpmArr}
+        setwpmArr={setwpmArr}
         />}
         {!myTurn && currentLine && <ShowOtherInput
           turns={rapObj.turns}
@@ -239,6 +285,12 @@ function Game(props) {
       </MessageDiv>
       } 
       {showSignIn && <SignInPrompt />}
+      {isDone && <FinishPrompt 
+        wpm={calcWPMAverage()}
+        errorNum={0}
+        winAnimal={didWin ? (isBear ? 'bear' : 'rabbit') : (isBear ? 'rabbit' : 'bear')}
+        won={didWin}
+      />}
       <Keyboard />
       {!handsOff && <Hand src={lefthand} />}
       {!handsOff && <Hand src={righthand} right />}
@@ -335,6 +387,7 @@ const OnOffButton = styled.div`
   padding: 10px;
   border-radius: 12px;
   position: relative;
+  user-select: none;
 
   svg,
   img {
@@ -352,13 +405,14 @@ const Hand = styled.img`
   height: 50vh;
   position: fixed;
   bottom: 0;
+  user-select: none;
 
   ${(props) =>
     props.right
       ? `
     right: 4%;
   `
-      : `left: 4%`}
+      : `left: 4%;`}
 
   @media screen and (max-width: 1400px) {
     ${(props) =>

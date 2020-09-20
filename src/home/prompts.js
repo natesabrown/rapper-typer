@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import styled from "styled-components";
 import bearhead from "./bearhead.svg";
 import rabbithead from "./rabbithead.svg";
@@ -9,6 +9,8 @@ import { useFirestore, useFirebase, useFirestoreConnect } from "react-redux-fire
 import GoogleButton from "react-google-button";
 import { useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
+import { isEmpty } from 'react-redux-firebase';
+import { FaRegCheckCircle } from 'react-icons/fa';
 
 const BEAR = 0;
 const RABBIT = 1;
@@ -481,4 +483,135 @@ const HelpDiv = styled.div`
   padding: 30px;
 `;
 
-export { CreatePrompt, JoinPrompt, SignInPrompt, HelpPrompt };
+function FinishPrompt(props) {
+  const wpm = props.wpm || 64;
+  const errorNum = props.errorNum || 13;
+  const winAnimal = props.winAnimal || "bear";
+  const won = props.won || false;
+  const firebase = useFirebase();
+  const [pctDiff, setpctDiff] = useState();
+  const profile = useSelector((state) => state.firebase.profile);
+  const history = useHistory();
+
+  useEffect(() => {
+    if (!isEmpty(profile) && !pctDiff) {
+    let previousWPM = profile.averageWPM;
+    let newWPM = wpm;
+    console.log(profile)
+    let diff = (((newWPM - previousWPM) / previousWPM) * 100).toFixed(1)
+    setpctDiff(diff);
+
+    firebase.updateProfile({
+      averageWPM: wpm
+    })
+  }
+  }, [profile])
+
+  return (
+    <FillContainer>
+      <Prompt style={{height: "800px"}}>
+        <WinnerDiv>
+      <Animal
+        src={winAnimal == 'bear' ? bearhead : rabbithead}
+        style={winAnimal == 'bear' ? { transform: "translateX(27px)" } : {}}
+      />
+      {winAnimal == 'bear' ? 'Bear McCool won!' : 'Rapper Rabbit won!'}
+      </WinnerDiv>
+        <Message style={{fontWeight: "500"}}>Your Stats</Message>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          marginTop: "14px"
+        }}>
+          <Stat><Line/><Num>{wpm}</Num> wpm <Line long /> </Stat>
+          <Stat><Line long/><Num>{errorNum}</Num> errors <Line/> </Stat>
+          <Stat><Line/><Num>{pctDiff}%</Num> <div>improvement</div> <Line/> </Stat>
+          <EncouragingMessage>
+            {won ? "You're a Master Rapper." : "You'll get 'em next time!"}
+          </EncouragingMessage>
+        </div>
+        <DoneButton onClick={() => history.push('/')}>
+          <FaRegCheckCircle />
+          I'm Done!
+        </DoneButton>
+      </Prompt>
+    </FillContainer>
+  )
+}
+
+const EncouragingMessage = styled.div`
+  color: black;
+  font-weight: 600;
+  font-size: 21px;
+  margin-top: 15px;
+`
+
+const DoneButton = styled.div`
+  width: 250px;
+  height: 90px;
+  margin-top: 30px;
+  border-radius: 10px;
+  color: white;
+  background-color: darkblue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 500;
+  border-bottom: 5px solid white;
+
+  svg {
+    height: 50px;
+    width: 50px;
+    margin-right: 12px;
+  }
+  &:hover {
+    cursor: pointer;
+
+    svg {
+      animation: softbounce 0.5s ease-in-out infinite;
+    }
+  }
+`;
+
+const WinnerDiv = styled.div`
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-weight: 400;
+  text-align: center;
+  font-size: 30px;
+  align-items: center;
+
+  img {
+    width: 250px;
+    height: 250px;
+  }
+`
+
+const Line = styled.div`
+  width: 60px;
+  ${props => props.long && 'width: 140px;'}
+  height: 5px;
+  border-radius: 5px;
+  background-color: white;
+  align-self: center;
+  margin: 0px 14px;
+`
+
+const Num = styled.div`
+  font-weight: 700;
+  font-size: 45px;
+  margin-right: 12px;
+`
+
+const Stat = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  color: white;
+  font-size: 35px;
+`
+
+export { CreatePrompt, JoinPrompt, SignInPrompt, HelpPrompt, FinishPrompt };
