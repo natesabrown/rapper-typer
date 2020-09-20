@@ -130,8 +130,8 @@ function Game(props) {
         setTimeout(() => {
           firestore.collection("sessions").doc(gameID).get().then(doc => {
             const data = doc.data();
-            const { player1wpm, player2wpm } = data;
-            if (player1wpm > player2wpm) {
+            const { player1score, player2score } = data;
+            if (player1score > player2score) {
               if (isPlayer1) {
                 setDidWin(true);
               } else {
