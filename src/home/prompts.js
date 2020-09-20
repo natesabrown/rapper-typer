@@ -15,6 +15,10 @@ import { FaRegCheckCircle } from 'react-icons/fa';
 const BEAR = 0;
 const RABBIT = 1;
 
+function getRandomFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
 function CreatePrompt(props) {
   const { setShown } = props;
   const textAreaRef = useRef(null);
@@ -47,6 +51,7 @@ function CreatePrompt(props) {
       .collection("sessions")
       .add(Object.assign({
         status: "WAITING",
+        songChoice: getRandomFrom(["example", "song1", "dummy"]),
         turn: 1
       }, {player1: {
         animal: creatureChoice,
@@ -436,6 +441,13 @@ function HelpPrompt(props) {
         <p>
           When it's your turn, simply type in what you see in the prompt.
         </p>
+        <h1>
+          How is my goal WPM calculated?
+        </h1>
+        <p>
+          Your goal score is 5 higher than the average wpm for your last game. 
+        </p>
+
         </Explanation>
         <Credits>
           Made by Nathaniel Brown at <b>HackMIT</b> 2020
@@ -460,6 +472,10 @@ const Credits = styled.div`
 const Explanation = styled.div`
   margin-top: 30px;
   text-align: center;
+  h1 {
+    margin-bottom: 10px;
+    margin-top: 40px;
+  }
 `
 
 const HelpDiv = styled.div`
@@ -473,7 +489,7 @@ const HelpDiv = styled.div`
   box-shadow: 0px 10px 15px 1px rgba(0, 0, 0, 0.4);
   width: 70%;
   height: 80%;
-  opacity: 0.8;
+  opacity: 0.88;
   border-radius: 30px;
   display: flex;
   flex-direction: column;

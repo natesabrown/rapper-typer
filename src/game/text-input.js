@@ -24,6 +24,12 @@ const TURNS = {
   ],
 };
 
+const GOOD_LETTERS = `
+qwertyuiopasdfghjkl;'zxcvbnm
+1234567890!@#$%^&*(),./<>?:"
+[]{} 
+`;
+
 function TextInput(props) {
   const turn = props.turns[props.currentTurn];
   const onNextRow = props.onNextRow;
@@ -33,6 +39,11 @@ function TextInput(props) {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [startTime, setStart] = useState();
+  const [showError, setShowError] = useState(false);
+  const numErrors = props.numErrors;
+  const setNumErrors = props.setNumErrors;
+  const wrongLetters = props.wrongLetters;
+  const setWrongLetters = props.setWrongLetters;
 
   useEffect(() => {
     const addStuff = (event) => {
@@ -41,6 +52,8 @@ function TextInput(props) {
       if (key == letter) {
         addProgress();
         conditionalTimeStart();
+      } else if (startTime && (letter.toLowerCase() != "shift")){
+        addError(letter);
       }
     };
 
@@ -48,7 +61,7 @@ function TextInput(props) {
     return () => {
       document.removeEventListener("keydown", addStuff);
     };
-  }, [progress, index]);
+  }, [progress, index, numErrors, showError, wrongLetters]);
 
   const addProgress = () => {
     setProgress((progress) => progress + 1);
@@ -61,11 +74,28 @@ function TextInput(props) {
       } else {
         onNextRow();
         setIndex(index + 1);
+        console.log(`Index is now $${index}`);
+        console.log(turn)
       }
     }
   };
 
+  const addError = (letter) => {
+    console.log("adding error")
+    setNumErrors((numErrors) => numErrors + 1);
+    setWrongLetters((wrongLetters) => (wrongLetters + letter));
+    console.log(`Wrong letters are now ${wrongLetters}`)
+
+    setShowError(true);
+    setTimeout(() => {
+      setShowError(false);
+    }, 1000);
+  }
+
   const addTimeToArr = () => {
+    // for laziness' sake
+    // setWrongLetters("")
+
     let arr = [...wpmArr]
     let seconds = (((new Date()) - startTime) / 1000)
     let minutes = seconds / 60;
@@ -113,10 +143,42 @@ function TextInput(props) {
           );
         })}
       </Row>
+      {/* TODO: Fix this and show errors */}
+      {/* {showError && generateError()} */}
       <NextLine>{getNextLine()}</NextLine>
     </Lines>
   );
 }
+
+function generateError() {
+  return <Error 
+  size={Math.max(Math.random() * 50, 25)}
+  hrDistance={(Math.random() * 1000) - 250}
+>-1</Error>
+}
+
+const Error = styled.div`
+  font-size: ${props => props.size}px;
+  animation: fade-in-out 0.5s;
+  color: red;
+  position: absolute;
+  left: ${props => props.hrDistance}px;
+
+  @keyframes fade-in-out {
+    0% {
+      opacity: 0%;
+      transform: scale(0.3);
+    }
+    25% {
+      opacity: 100%;
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 0%;
+      transform: scale(0.3);
+    }
+  }
+`
 
 function ShowOtherInput(props) {
 
@@ -129,7 +191,7 @@ function ShowOtherInput(props) {
           color: "orange",
           textAlign: "center"
         }}>
-          {props.turns[props.currentTurn][props.currentLine]}
+          {props.currentTurn ? props.turns[props.currentTurn][props.currentLine] : props.turns["0"][0]}
         </div>
       </Row>
     </Lines>

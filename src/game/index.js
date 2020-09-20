@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import Keyboard from "./keyboard";
 import { useHistory } from "react-router-dom";
@@ -16,19 +16,27 @@ import logo from "../home/logo.svg";
 import { FaRegQuestionCircle } from "react-icons/fa";
 import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
-import curtain from "./curtain_medium.jpg";
+import city1 from './city.jpg';
+import city2 from './city2.jpg';
+import city3 from './city3.jpg';
 import lefthand from "./lefthand.svg";
 import righthand from "./righthand.svg";
 import { IoIosHand } from "react-icons/io";
 import hihat from "./hihat.svg";
 import { MdNotInterested } from "react-icons/md";
 import yourgoal from "./yourgoal.svg";
-import leftbubble from "./leftbubble.svg";
-import rightbubble from "./rightbubble.svg";
+import leftbubble from "./leftbubble2.svg";
+import rightbubble from "./rightbubble2.svg";
 import bearhead from "../home/bearhead.svg";
 import rabbithead from "../home/rabbithead.svg";
 import TextInput, { ShowOtherInput } from './text-input';
 import { FinishPrompt } from '../home/prompts';
+import Insight from './insight';
+import music from './hihat2.mp3'
+
+function getRandomFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
 
 function Game(props) {
   const gameID = props.match.params.gameID;
@@ -46,26 +54,76 @@ function Game(props) {
   const [wpmArr, setwpmArr] = useState([]);
   const [isDone, setIsDone] = useState(false);
   const [didWin, setDidWin] = useState();
+  const [numErrors, setNumErrors] = useState(0);
+  const [wrongLetters, setWrongLetters] = useState("");
   let [isPlayer1, setIsPlayer1] = useState(false);
+
+  const [bgSrc, setbgSrc] = useState(getRandomFrom([city1,city2,city3]));
 
   useFirebaseConnect(gameID);
   useFirestoreConnect(`sessions/${gameID}`);
   const currentLine = useSelector(state => state.firebase.data[gameID] && state.firebase.data[gameID].currentLine);
   const currentTurn = useSelector(state => state.firebase.data[gameID] && state.firebase.data[gameID].currentTurn);
   const status = useSelector(
-    (state) => state.firestore.data.sessions && state.firestore.data.sessions[gameID].status
+    (state) => state.firestore.data.sessions && state.firestore.data.sessions[gameID] && state.firestore.data.sessions[gameID].status
   );
+  const soundRef = useRef(null);
 
   useEffect(() => {
+    if (musicOff) {
+      soundRef.current.muted = true;
+    } else {
+      soundRef.current.muted = false;
+    }
+  }, [musicOff])
+
+  useEffect(() => {
+    setSoundSpeed();
+  }, [rapObj])
+
+  const setSoundSpeed = () => {
+    if (rapObj.turns) {
+      soundRef.current.playbackRate = calculateSpeed();
+    }
+  }
+
+  const calculateSpeed = () => {
+    let wps = (profile.averageWPM + 5) / 60
+    let wordCount = 0;
+    let charCount = 0;
+
+    console.log(`Words per second: ${wps}`);
+    for (let turn of Object.values(rapObj.turns)) {
+      for (let turney of turn) {
+      console.log(`Turn: ${turney}`)
+      for (let word of turney.split(" ")) {
+        wordCount += 1;
+        for (let char of word.split("")) {
+          charCount += 1;
+        }
+      }
+    }
+    }
+    console.log(`Char count: ${charCount}`);
+    console.log(`Word count: ${wordCount}`);
+    let charsPerWord = charCount / wordCount;
+    let charsPerSecond = charsPerWord * wps;
+    console.log(`Chars per second: ${charsPerSecond}`);
+    return (charsPerSecond / 4);
+  }
+
+  useEffect(() => {
+    setSoundSpeed();
     if (status == "FINISHED") {
       let update_obj = {};
+      console.log(`Final is ${calcWPMAverage()} - ${numErrors}`)
       if (isPlayer1) {
         update_obj = {
-          player1wpm: calcWPMAverage()
+          player1score: calcWPMAverage() - numErrors
         }
       } else {
         update_obj = {
-          player2wpm: calcWPMAverage()
+          player2score: calcWPMAverage() - numErrors
         }
       }
       firestore.collection("sessions").doc(gameID).update(update_obj).then(() => {
@@ -215,9 +273,11 @@ function Game(props) {
           setOtherName(convertName(getOtherPlayersName(player1, player2)));
         }
 
+        let { songChoice } = data;
+
         firestore
           .collection("songs")
-          .doc("example") // todo: change
+          .doc(songChoice) // todo: change
           .get()
           .then((doc) => {
             let data = doc.data();
@@ -229,11 +289,14 @@ function Game(props) {
 
   return (
     <MainContainer>
+      <audio autoPlay loop ref={soundRef}>
+        <source src={music}></source>
+      </audio>
       <TopBar>
         <Logo src={logo} />
         <Question />
       </TopBar>
-      <WPMGoal>
+      <WPMGoal goal={profile.averageWPM + 5}>
         <PlayerDiv>
           {isBear ? (
             <AnimalImage
@@ -264,6 +327,7 @@ function Game(props) {
           firebase.ref(gameID).update({currentLine: currentLine + 1});
         }} onDone={() => {
           if ((currentTurn + 1) != Object.keys(rapObj.turns).length) {
+            setMyTurn(false);
             firebase.ref(gameID).update({currentLine: 0, currentTurn: currentTurn + 1});
           } else {
             console.log("Done")
@@ -276,18 +340,22 @@ function Game(props) {
         currentTurn={currentTurn}
         wpmArr={wpmArr}
         setwpmArr={setwpmArr}
+        numErrors={numErrors}
+        setNumErrors={setNumErrors}
+        wrongLetters={wrongLetters}
+        setWrongLetters={setWrongLetters}
         />}
-        {!myTurn && currentLine && <ShowOtherInput
+        {!myTurn && <ShowOtherInput
           turns={rapObj.turns}
-          currentTurn={currentTurn}
-          currentLine={currentLine}
+          currentTurn={currentTurn || '0'}
+          currentLine={currentLine || 0}
         />}
       </MessageDiv>
       } 
       {showSignIn && <SignInPrompt />}
       {isDone && <FinishPrompt 
         wpm={calcWPMAverage()}
-        errorNum={0}
+        errorNum={numErrors}
         winAnimal={didWin ? (isBear ? 'bear' : 'rabbit') : (isBear ? 'rabbit' : 'bear')}
         won={didWin}
       />}
@@ -315,14 +383,15 @@ function Game(props) {
           )}
         </OnOffButton>
       </ButtonRow>
-      {/* <BackgroundDiv>
+      {!myTurn && (currentTurn != 0) && <Insight wpmarr={wpmArr} wrongLetters={wrongLetters} />}
+      <BackgroundDiv>
         <LazyLoadImage
           effect="blur"
-          src={curtain}
+          src={bgSrc}
           height="100%"
           width="100%"
         />
-      </BackgroundDiv> */}
+      </BackgroundDiv>
     </MainContainer>
   );
 }
@@ -354,6 +423,7 @@ const MessageDiv = styled.div`
 
   img {
     width: 800px;
+    transform: translateY(-50px);
   }
 `;
 
@@ -435,7 +505,7 @@ const BackgroundDiv = styled.div`
   width: 100vw;
   height: 100vh;
   z-index: -2;
-  filter: saturate(50%) brightness(180%);
+  filter: saturate(50%) brightness(110%);
 `;
 
 const Logo = styled.img`
@@ -494,9 +564,11 @@ const QMark = styled.div`
 `;
 
 function WPMGoal(props) {
+  const goal = props.goal || "00";
+  
   return (
     <WPMDiv>
-      <Flesh>68</Flesh>
+      <Flesh>{goal}</Flesh>
       <WPMMessage>
         WPM
         <img src={yourgoal} />
