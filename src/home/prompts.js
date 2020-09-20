@@ -76,7 +76,7 @@ function CreatePrompt(props) {
   const copyToClipboard = async () => {
     try {
       // CHANGE ME
-      let url = `http://localhost:3000/game/${accessCode}`;
+      let url = `https://hungry-albattani-7f8050.netlify.app/${accessCode}`;
       await navigator.clipboard.writeText(url);
     } catch (err) {}
   };
